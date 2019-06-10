@@ -750,6 +750,16 @@ HTML;
      * @var array the HTML attributes for the table container
      */
     public $tableContainer = [];
+    
+    /**
+     * @var html template for value(s)
+     */
+    public $valueTemplate = "{value}";
+        
+    /**
+     * @var html template for lable(s)
+     */
+    public $labelTemplate = "{label}";
 
     /**
      * @var ActiveForm the form instance
@@ -1024,9 +1034,18 @@ HTML;
     {
         $labelColOpts = ArrayHelper::getValue($attribute, 'labelColOptions', $this->labelColOptions);
         $valueColOpts = ArrayHelper::getValue($attribute, 'valueColOptions', $this->valueColOptions);
+        
+        // Define the rendering of the label
+        $label = ArrayHelper::getValue($attribute, 'label', '');
+        if( is_callable($this->labelTemplate) ) {
+            $label = strtr( call_user_func($this->labelTemplate, $this->model, $attribute['attribute']), ['{label}' => $label]);
+        } else  {
+            $label = strtr($this->labelTemplate, ['{label}' => $label]);
+        }
+        
+        
         if (ArrayHelper::getValue($attribute, 'group', false)) {
             $groupOptions = ArrayHelper::getValue($attribute, 'groupOptions', []);
-            $label = ArrayHelper::getValue($attribute, 'label', '');
             if (empty($groupOptions['colspan'])) {
                 $groupOptions['colspan'] = 2;
             }
@@ -1038,22 +1057,31 @@ HTML;
         if (ArrayHelper::getValue($attribute, 'type', 'text') === self::INPUT_HIDDEN) {
             Html::addCssClass($this->_rowOptions, 'kv-edit-hidden');
         }
-        /** issue #158 **/
+
+        //Define the rendering of the value
+        // issue #158 
         $value = is_array($attribute['value']) ? print_r($attribute['value'], true) : $attribute['value'];
 
         if ($this->notSetIfEmpty && ($value === '' || $value === null)) {
             $value = null;
         }
         $dispAttr = $this->formatter->format($value, $attribute['format']);
+        
+        if( is_callable($this->valueTemplate) ){
+            $vOutput = strtr( call_user_func($this->valueTemplate, $this->model, $attribute['attribute']), ['{value}' => $dispAttr]);
+        } else {
+            $vOutput = strtr($this->valueTemplate, ['{value}' => $dispAttr]);
+        }
+        
         Html::addCssClass($this->viewAttributeContainer, 'kv-attribute');
         Html::addCssClass($this->editAttributeContainer, 'kv-form-attribute');
-        $output = Html::tag('div', $dispAttr, $this->viewAttributeContainer) . "\n";
+        $output = Html::tag('div', $vOutput, $this->viewAttributeContainer) . "\n";
         if ($this->enableEditMode) {
             $editInput = ArrayHelper::getValue($attribute, 'displayOnly', false) ? $dispAttr :
                 $this->renderFormAttribute($attribute);
             $output .= Html::tag('div', $editInput, $this->editAttributeContainer);
         }
-        return Html::tag('th', $attribute['label'], $labelColOpts) . "\n" . Html::tag('td', $output, $valueColOpts);
+        return Html::tag('th', $label, $labelColOpts) . "\n" . Html::tag('td', $output, $valueColOpts);
     }
 
     /**
